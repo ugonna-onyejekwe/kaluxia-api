@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ credentials: true, origin: "https://kaluxia-fe.vercel.app/" }));
+app.use(cors({ credentials: true, origin: "https://kaluxia-fe.vercel.app" }));
 app.use(upload());
 app.use("/uploads", express.static(__dirname + "/uploads"));
 
