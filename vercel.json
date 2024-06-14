@@ -2,15 +2,16 @@
   "version": 2,
   "builds": [
     {
-      "src": "index.js",
+      "src": "src/index.js",
       "use": "@vercel/node",
       "config": {
         "runtime": "nodejs14",
         "framework": "express",
+        "includeFiles": ["dist/**"],
         "contentType": "application/json"
       }
     }
   ],
 
-  "routes": [{ "src": "/(.*)", "dest": "/" }]
+  "routes": [{ "src": "/(.*)", "dest": "src/index.js" }]
 }
