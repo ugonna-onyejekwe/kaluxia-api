@@ -1,6 +1,16 @@
 {
   "version": 2,
-  "builds": [{ "src": "*.js", "use": "@vercel/node" }],
+  "builds": [
+    {
+      "src": "index.js",
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs14",
+        "framework": "express",
+        "contentType": "application/json"
+      }
+    }
+  ],
 
   "routes": [{ "src": "/(.*)", "dest": "/" }]
 }
