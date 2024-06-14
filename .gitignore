@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Package Lock Files
+package-lock.json
+yarn.lock
+
+# Environment Variables
+.env
+.env.development.local
+.env.test.local
+.env.production.local  # Add more as needed
+
+# Logs
+*.log
+
+# Runtime Data
+pids*.pid
+*.pid.lock
+
+# Testing Coverage
+coverage/*
+.nyc_output
+
+# Build Output (if applicable)
+build/
+
+# IDE Specific Files
+.idea/
+.vscode/
+
+# Temporary Files
+tmp/
+
+# Caching
+.cache
+
+# Optional: npm Cache
+.npm
+
+# Optional: Yarn Cache
+.yarn/cache
+.yarn/unplugged
+
+# Optional: ESLint Cache
+.eslintcache
