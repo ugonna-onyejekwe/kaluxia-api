@@ -17,6 +17,10 @@ app.use(cors());
 app.use(upload());
 app.use("/uploads", express.static(__dirname + "/uploads"));
 
+app.get("/", (req, res) => {
+  res.send("kaluxia api");
+});
+
 app.use("/api/users", usersRoute);
 app.use("/api/posts", postsRoute);
 
