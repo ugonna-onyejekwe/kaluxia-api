@@ -7,9 +7,10 @@ const postSchema = new Schema(
     title: { type: String, required: true },
     tag: { type: String, required: true },
     desc: { type: String, required: true },
-    thumbnail: { type: String, require: true },
-    views: { type: Number, default: 0 },
-    likes: { type: Number, default: 0 },
+    thumbnail: {
+      public_id: { type: String, require: true },
+      url: { type: String, require: true },
+    },
     authur: {
       name: { type: String, required: true },
       id: { type: String, required: true },

@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const fs = require("fs");
 const path = require("path");
 const { v4: uuid } = require("uuid");
+const { cloudinary } = require("../utils/cloudinary");
 
 // authSession
 const authSession = async (req, res, next) => {
@@ -167,56 +168,14 @@ const editUser = async (req, res, next) => {
       );
     }
 
-    if (req?.files?.avatar) {
-      if (req?.files?.avatar?.size > 500000) {
-        return next(
-          new HttpError("image size should not be more tha 500kb", 422)
-        );
-      }
+    const newName = firstName + " " + lastName;
 
-      const user = await User.findById(req.user.id);
-
-      if (user?.avatar) {
-        fs.unlink(path.join(__dirname, "..", "uploads", user.avatar), (err) => {
-          if (err) {
-            return next(new HttpError(err));
-          }
-        });
-      }
-
-      const filename = req?.files?.avatar?.name;
-      const splitedName = filename.split(".");
-      const newSplitedName =
-        splitedName[0] + uuid() + "." + splitedName[splitedName.length - 1];
-
-      req?.files?.avatar.mv(
-        path.join(__dirname, "..", "uploads", newSplitedName),
-        async (err) => {
-          if (err) {
-            return next(new HttpError(err));
-          }
-
-          const newName = firstName + " " + lastName;
-
-          const updatedUser = await User.findByIdAndUpdate(
-            req.user.id,
-            { avatar: newSplitedName, name: newName, bio, about },
-            { new: true }
-          );
-
-          res.status(200).send(updatedUser);
-        }
-      );
-    } else {
-      const newName = firstName + " " + lastName;
-
-      const updatedUser = await User.findByIdAndUpdate(
-        req.user.id,
-        { name: newName, bio, about },
-        { new: true }
-      );
-      res.status(200).send(updatedUser);
-    }
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { name: newName, bio, about },
+      { new: true }
+    );
+    res.status(200).send(updatedUser);
   } catch (error) {
     return next(new HttpError(error));
   }
@@ -225,55 +184,49 @@ const editUser = async (req, res, next) => {
 // Change Avater
 // protectted
 const changeAvatar = async (req, res, next) => {
-  if (!req.user) {
-    return next(new HttpError("Unauthorized. Pls Login", 403));
-  }
-
-  if (!req.files || !req.files.avatar) {
-    return next(new HttpError("Pls, upload an image", 422));
-  }
-
-  const user = await User.findById(req.user.id);
-
-  if (!user) {
-    return next(new HttpError("User not found", 422));
-  }
-
-  if (user.id !== req.user.id) {
-    return next(
-      new HttpError(
-        "You can't edit another person image. pls login to your account to do that.",
-        403
-      )
-    );
-  }
-
-  if (user.avatar !== "app-unknown-user.jpg") {
-    fs.unlink(path.join(__dirname, "..", "uploads", user?.avatar), (err) => {
-      if (err) {
-        return next(new HttpError(err));
-      }
-    });
-  }
-
-  const { avatar } = req.files;
-
-  const splittedImgName = avatar.name.split(".");
-  const newName =
-    splittedImgName[0] +
-    uuid() +
-    "." +
-    splittedImgName[splittedImgName.length - 1];
-
-  avatar.mv(path.join(__dirname, "..", "uploads", newName), async (err) => {
-    if (err) {
-      return next(new HttpError(err));
+  try {
+    if (!req.user) {
+      return next(new HttpError("Unauthorized. Pls Login", 403));
     }
+
+    if (!req.file) {
+      return next(new HttpError("Pls, upload an image", 422));
+    }
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return next(new HttpError("User not found", 422));
+    }
+
+    if (user.id !== req.user.id) {
+      return next(
+        new HttpError(
+          "You can't edit another person image. pls login to your account to do that.",
+          403
+        )
+      );
+    }
+
+    if (user.avatar.url && user.avatar.public_id) {
+      await cloudinary.uploader.destroy(user.avatar.public_id);
+    }
+
+    const image = await cloudinary.uploader.upload(req.file.path, {
+      resource_type: "auto",
+      upload_preset: "kaluxia-images",
+    });
+
+    if (!image) {
+      return next(new HttpError("unable to upload image", 500));
+    }
+
+    const { public_id, url } = image;
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user.id,
       {
-        avatar: newName,
+        avatar: { public_id, url },
       },
       { new: true }
     );
@@ -282,8 +235,11 @@ const changeAvatar = async (req, res, next) => {
       return next(new HttpError("Error occured, Can't update user"));
     }
 
-    res.status(201).send(updatedUser.avatar);
-  });
+    res.status(201).send(updatedUser);
+  } catch (error) {
+    console.log(error);
+    return next(new HttpError(error));
+  }
 };
 
 //

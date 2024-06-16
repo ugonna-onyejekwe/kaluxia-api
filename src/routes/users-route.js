@@ -11,6 +11,7 @@ const {
   changeAvatar,
   authSession,
 } = require("../controllers/users-controllers");
+const { upload } = require("../utils/cloudinary");
 
 const router = Router();
 router.get("/authSession", authMiddleware, authSession);
@@ -19,7 +20,12 @@ router.post("/login", loginUser);
 router.get("/", allusers);
 router.get("/:id", singleUser);
 router.patch("/edit-user-info", authMiddleware, editUser);
-router.patch("/:id/change-avatar", authMiddleware, changeAvatar);
+router.patch(
+  "/:id/change-avatar",
+  authMiddleware,
+  upload.single("avatar"),
+  changeAvatar
+);
 // export default router;
 
 module.exports = router;

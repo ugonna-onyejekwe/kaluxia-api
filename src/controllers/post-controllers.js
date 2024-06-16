@@ -1,9 +1,7 @@
 const HttpError = require("../models/error-model");
 const Post = require("../models/post-model");
 const User = require("../models/user-model");
-const fs = require("fs");
-const path = require("path");
-const { v4: uuid } = require("uuid");
+const { cloudinary } = require("../utils/cloudinary");
 
 // send post
 //protected
@@ -20,13 +18,14 @@ const sendPost = async (req, res, next) => {
     const { name: userName, id } = req.user;
 
     let user = await User.findById(id);
+
     if (!user) {
       return next(
         new HttpError("Unathorized. Login to be able to create a post,", 403)
       );
     }
 
-    const { posts } = user;
+    const { posts: postCount } = user;
 
     if (!title || !tag || !desc) {
       return next(new HttpError(" Fill in all field"));
@@ -38,50 +37,47 @@ const sendPost = async (req, res, next) => {
       );
     }
 
-    if (!req.files) {
+    if (!req.file) {
       return next(new HttpError("please unpload an image"));
     }
 
-    const { thumbnail } = req.files;
+    const image = await cloudinary.uploader.upload(req.file.path, {
+      resource_type: "auto",
+      upload_preset: "kaluxia-images",
+    });
 
-    if (thumbnail.size > 5000000) {
-      return next(new HttpError("image should not be bigger than 5MB"));
+    if (!image) {
+      return next(new HttpError("unable to upload image", 500));
     }
 
-    const splitedName = thumbnail.name.split(".");
-    const newImgName =
-      splitedName[0] + uuid() + "." + splitedName[splitedName.length - 1];
+    const { public_id, url } = image;
 
-    thumbnail.mv(
-      path.join(__dirname, "..", "uploads", newImgName),
-      async (err) => {
-        if (err) {
-          return next(new HttpError(err));
-        }
+    const newPost = await Post.create({
+      title,
+      tag,
+      desc,
+      thumbnail: {
+        public_id,
+        url,
+      },
+      authur: {
+        name: userName,
+        id,
+      },
+    });
 
-        const newPost = await Post.create({
-          title,
-          tag,
-          desc,
-          thumbnail: newImgName,
-          authur: {
-            name: userName,
-            id,
-          },
-        });
+    if (!newPost) {
+      return next(new HttpError("Unknown error occured", 500));
+    }
 
-        if (!newPost) {
-          return next(new HttpError("Unknown error occured", 500));
-        }
+    let userAccount = await User.findByIdAndUpdate(id, {
+      posts: postCount + 1,
+    });
+    if (!userAccount) {
+      return next(new HttpError("can't update post count", 422));
+    }
 
-        let user = await User.findByIdAndUpdate(id, { posts: posts + 1 });
-        if (!user) {
-          return next(new HttpError("can't update post count", 422));
-        }
-
-        res.status(200).send(newPost);
-      }
-    );
+    res.status(200).send(newPost);
   } catch (error) {
     return next(new HttpError(error));
   }
@@ -126,6 +122,7 @@ const editPost = async (req, res, next) => {
     if (!req.user) {
       return next(new HttpError("unauthorized. Not login in"));
     }
+
     const { id: userId } = req.user;
 
     const post = await Post.findById(id);
@@ -142,56 +139,48 @@ const editPost = async (req, res, next) => {
       return next(new HttpError("Fill in all fields", 422));
     }
 
-    if (desc.length < 300) {
+    if (desc.length < 200) {
       return next(
         new HttpError(
-          "Post description field must contain more than 300 characters",
+          "Post description field must contain more than 200 characters",
           422
         )
       );
     }
 
-    if (req.files && req.files.thumbnail.name !== post.thumbnail) {
-      const { thumbnail } = req?.files;
-      // delete exist image
-      fs.unlink(
-        path.join(__dirname, "..", "uploads", post.thumbnail),
-        async (err) => {
-          if (err) {
-            return next(new HttpError(err));
-          }
-        }
+    if (req.file) {
+      await cloudinary.uploader.destroy(post.thumbnail.public_id);
+
+      const image = await cloudinary.uploader.upload(req.file.path, {
+        resource_type: "auto",
+        upload_preset: "kaluxia-images",
+      });
+
+      if (!image) {
+        return next(new HttpError("unable to upload image", 500));
+      }
+
+      const { public_id, url } = image;
+
+      const editedPost = await Post.findByIdAndUpdate(
+        id,
+        {
+          title,
+          tag,
+          desc,
+          thumbnail: {
+            public_id,
+            url,
+          },
+        },
+        { new: true }
       );
 
-      const splitedName = thumbnail.name.split(".");
-      const newImgName =
-        splitedName[0] + uuid() + "." + splitedName[splitedName.length - 1];
+      if (!editedPost) {
+        return next(new HttpError("Unknown error occured", 500));
+      }
 
-      thumbnail.mv(
-        path.join(__dirname, "..", "uploads", newImgName),
-        async (err) => {
-          if (err) {
-            return next(new HttpError(err));
-          }
-
-          const editedPost = await Post.findByIdAndUpdate(
-            id,
-            {
-              title,
-              tag,
-              desc,
-              thumbnail: newImgName,
-            },
-            { new: true }
-          );
-
-          if (!editedPost) {
-            return next(new HttpError("Unknown error occured", 500));
-          }
-
-          res.status(200).send(editedPost);
-        }
-      );
+      res.status(200).send(editedPost);
     } else {
       const editedPost = await Post.findByIdAndUpdate(
         id,
@@ -239,6 +228,8 @@ const deletePost = async (req, res, next) => {
     const creator = await User.findById(post.authur.id);
 
     const postCount = creator.posts - 1;
+
+    await cloudinary.uploader.destroy(post.thumbnail.public_id);
 
     await User.findByIdAndUpdate(post.authur.id, { posts: postCount });
 

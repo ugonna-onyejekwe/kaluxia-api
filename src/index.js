@@ -2,7 +2,6 @@ require("dotenv").config();
 const express = require("express");
 const { connect } = require("mongoose");
 const cors = require("cors");
-const upload = require("express-fileupload");
 
 const usersRoute = require("./routes/users-route");
 const postsRoute = require("./routes/posts-route");
@@ -14,11 +13,8 @@ const PORT = process.env.PORT || 5000;
 app.use(express.json({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
-// app.use(cors({ credentials: true, origin: "https://kaluxia-fe.vercel.app/" }));
-app.use(upload());
-app.use("/uploads", express.static(__dirname + "/uploads"));
 
-app.get("/", (req, res) => {
+app.post("/", async (req, res) => {
   res.send("kaluxia api");
 });
 
