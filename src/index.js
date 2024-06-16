@@ -14,7 +14,7 @@ app.use(express.json({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-app.post("/", async (req, res) => {
+app.get("/", async (req, res) => {
   res.send("kaluxia api");
 });
 
