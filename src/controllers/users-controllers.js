@@ -235,7 +235,7 @@ const changeAvatar = async (req, res, next) => {
       return next(new HttpError("Error occured, Can't update user"));
     }
 
-    res.status(201).send(updatedUser);
+    res.status(201).send(updatedUser.avatar);
   } catch (error) {
     console.log(error);
     return next(new HttpError(error));
